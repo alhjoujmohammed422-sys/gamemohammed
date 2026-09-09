@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكي الشاحنات 3D - نسخة الويب</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            width: 280px;
+        }
+        h2 { margin-top: 0; font-size: 1.2rem; color: #ffeb3b; }
+        .dashboard {
+            background: #222;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        button {
+            display: block;
+            width: 100%;
+            margin: 8px 0;
+            padding: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background: #555; }
+        .active-btn { background: #007bff; border-color: #0056b3; }
+        .instructions { font-size: 0.9rem; color: #ccc; margin-top: 15px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h2>🚚 محاكي الشاحنات العالمية</h2>
+        <div class="dashboard">
+            السرعة: <span id="speedDisplay">0</span> كم/س
+        </div>
+        
+        <p style="margin-bottom: 5px; font-weight: bold;">اختر الطقس والطريق:</p>
+        <button id="btn-summer" class="active-btn" onclick="changeWeather('summer')">☀️ صيف (طريق 66 - أمريكا)</button>
+        <button id="btn-winter" onclick="changeWeather('winter')">❄️ شتاء (طريق الألب - سويسرا)</button>
+        <button id="btn-rain" onclick="changeWeather('rain')">🌧️ ممطر (طريق الغابة السوداء - ألمانيا)</button>
+
+        <div class="instructions">
+            <strong>طريقة التحكم:</strong><br>
+            ⬆️ أو W : تسارع<br>
+            ⬇️ أو S : فرامل / رجوع للخلف<br>
+            ⬅️ ➡️ أو A/D : توجيه الشاحنة
+        </div>
+    </div>
+
+    <!-- استدعاء مكتبة Three.js ثلاثية الأبعاد -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // إعداد المشهد الأساسي
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015); // ضباب لإعطاء واقعية للمدى
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // الإضاءة
+        const ambientLight = new THREE.AmbientLight(0x555555);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // بناء الشاحنة (مبسطة هندسياً)
+        const truck = new THREE.Group();
+
+        // 1. كابينة القيادة
+        const cabinGeo = new THREE.BoxGeometry(2.5, 3, 3);
+        const cabinMat = new THREE.MeshPhongMaterial({ color: 0xcc0000 }); // لون أحمر
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 2, 4);
+        cabin.castShadow = true;
+        truck.add(cabin);
+
+        // 2. المقطورة (التريلا)
+        const trailerGeo = new THREE.BoxGeometry(2.8, 3.5, 9);
+        const trailerMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+        const trailer = new THREE.Mesh(trailerGeo, trailerMat);
+        trailer.position.set(0, 2.25, -2);
+        trailer.castShadow = true;
+        truck.add(trailer);
+
+        // 3. العجلات (أمثلة مبسطة)
+        const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 3, 16);
+        const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const wheelPositions = [
+            [0, 0.6, 4], [0, 0.6, -2], [0, 0.6, -5]
+        ];
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(...pos);
+            truck.add(wheel);
+        });
+
+        scene.add(truck);
+
+        // الأرضية والطريق
+        const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+        const groundMat = new THREE.MeshPhongMaterial({ color: 0x3d8c40 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // رسم الطريق الإسفلتي
+        const roadGeo = new THREE.PlaneGeometry(12, 2000);
+        const roadMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+        const road = new THREE.Mesh(roadGeo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.y = 0.01; // فوق الأرضية بقليل
+        scene.add(road);
+
+        // نظام الطقس (الجسيمات)
+        let particleSystem;
+        function initWeather() {
+            const particles = new THREE.BufferGeometry();
+            const particleCount = 2000;
+            const posArray = new Float32Array(particleCount * 3);
+            
+            for(let i = 0; i < particleCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 100;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const pMaterial = new THREE.PointsMaterial({
+                size: 0.3,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            particleSystem = new THREE.Points(particles, pMaterial);
+            scene.add(particleSystem);
+            particleSystem.visible = false;
+        }
+        initWeather();
+
+        // وظيفة تغيير الطقس وفصول السنة
+        window.changeWeather = function(type) {
+            // إعادة ضبط ألوان الأزرار
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active-btn'));
+            document.getElementById('btn-' + type).classList.add('active-btn');
+
+            if(type === 'summer') {
+                scene.background = new THREE.Color(0x87CEEB); // سماء زرقاء
+                scene.fog.color.setHex(0x87CEEB);
+                ground.material.color.setHex(0x3d8c40); // عشب أخضر
+                ambientLight.color.setHex(0x555555);
+                particleSystem.visible = false;
+            } 
+            else if(type === 'winter') {
+                scene.background = new THREE.Color(0x99aacc); // سماء رمادية
+                scene.fog.color.setHex(0x99aacc);
+                ground.material.color.setHex(0xeeeeee); // أرض بيضاء (ثلج)
+                ambientLight.color.setHex(0x777777);
+                particleSystem.visible = true;
+                particleSystem.material.color.setHex(0xffffff); // ثلج أبيض
+                particleSystem.material.size = 0.3;
+            } 
+            else if(type === 'rain') {
+                scene.background = new THREE.Color(0x444455); // سماء داكنة
+                scene.fog.color.setHex(0x444455);
+                ground.material.color.setHex(0x2a3b2a); // عشب داكن ومبلل
+                ambientLight.color.setHex(0x333333);
+                particleSystem.visible = true;
+                particleSystem.material.color.setHex(0xaaaaff); // قطرات زرقاء فاتحة
+                particleSystem.material.size = 0.15; // قطرات رفيعة
+            }
+        };
+
+        // نظام التحكم والفيزياء
+        const keys = { w: false, a: false, s: false, d: false };
+        
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if(key === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if(key === 's' || e.key === 'ArrowDown') keys.s = true;
+            if(key === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if(key === 'd' || e.key === 'ArrowRight') keys.d = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if(key === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if(key === 's' || e.key === 'ArrowDown') keys.s = false;
+            if(key === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if(key === 'd' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        let speed = 0;
+        let angle = 0;
+        const maxSpeed = 1.2;
+        const acceleration = 0.005;
+        const braking = 0.01;
+        const friction = 0.002;
+
+        function updatePhysics() {
+            // التسارع والفرملة
+            if (keys.w) speed += acceleration;
+            else if (keys.s) speed -= braking;
+            else {
+                // الاحتكاك (توقف تدريجي)
+                if (speed > 0) speed -= friction;
+                if (speed < 0) speed += friction;
+            }
+
+            // حدود السرعة
+            speed = Math.max(-0.4, Math.min(speed, maxSpeed));
+
+            // التوجيه (يعمل فقط إذا كانت الشاحنة تتحرك)
+            if (Math.abs(speed) > 0.01) {
+                const turnSpeed = 0.02 * (speed / maxSpeed); // الالتفاف أسرع كلما زادت السرعة
+                if (keys.a) angle += turnSpeed;
+                if (keys.d) angle -= turnSpeed;
+            }
+
+            // تطبيق الحركة على الشاحنة
+            truck.rotation.y = angle;
+            truck.position.x -= Math.sin(angle) * speed;
+            truck.position.z -= Math.cos(angle) * speed;
+
+            // تحديث الكاميرا لتتبع الشاحنة من الخلف
+            const cameraOffset = new THREE.Vector3(0, 8, -25);
+            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+            
+            // جعل الكاميرا تتبع الشاحنة بسلاسة
+            camera.position.x += ((truck.position.x - cameraOffset.x) - camera.position.x) * 0.1;
+            camera.position.z += ((truck.position.z - cameraOffset.z) - camera.position.z) * 0.1;
+            camera.position.y = truck.position.y + 10;
+            
+            camera.lookAt(truck.position.x, truck.position.y + 2, truck.position.z);
+
+            // تحريك الأرضية والطريق لتغطية المسافات اللانهائية
+            ground.position.x = truck.position.x;
+            ground.position.z = truck.position.z;
+            road.position.z = truck.position.z; // الطريق يتحرك مع اللاعب للأمام
+            
+            // تحديث عداد السرعة في واجهة المستخدم
+            const displaySpeed = Math.abs(Math.round(speed * 100)); // تحويل السرعة لرقم مفهوم
+            document.getElementById('speedDisplay').innerText = displaySpeed;
+
+            // تحريك تأثيرات الطقس (المطر / الثلج)
+            if(particleSystem.visible) {
+                particleSystem.position.x = truck.position.x;
+                particleSystem.position.z = truck.position.z;
+                
+                const positions = particleSystem.geometry.attributes.position.array;
+                for(let i = 1; i < positions.length; i += 3) {
+                    positions[i] -= 0.5; // سرعة سقوط المطر/الثلج
+                    if(positions[i] < -10) positions[i] = 50; // إعادة تدوير الجسيمات للأعلى
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+        }
+
+        // حلقة اللعبة المستمرة (Game Loop)
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            renderer.render(scene, camera);
+        }
+
+        // تعديل حجم الشاشة عند التكبير/التصغير
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // تشغيل الحالة الافتراضية وبدء اللعبة
+        changeWeather('summer');
+        animate();
+    </script>
+</body>
+</html>
