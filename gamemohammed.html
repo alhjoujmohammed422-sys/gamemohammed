@@ -131,6 +131,33 @@
         }
         scene.add(branchRoads);
 
+        // حركة مرور وشخصيات بسيطة تضيف حياة للمشهد دون تحميل نماذج خارجية.
+        const traffic = new THREE.Group();
+        const carColors = [0x2d8cff, 0xf04a45, 0xffc928, 0x9b59d0, 0xf2f2f2];
+        const carWheelsMat = new THREE.MeshPhongMaterial({ color: 0x11151a });
+        function addCar(x, z, colorIndex, direction = 1, scale = 1) {
+            const car = new THREE.Group(); car.position.set(x, 0, z); car.scale.setScalar(scale); car.userData.direction = direction; car.userData.speed = 2.5 + (colorIndex % 3) * .65;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, .65, 3.5), new THREE.MeshPhongMaterial({ color: carColors[colorIndex % carColors.length], shininess: 65 })); body.position.y = .65; body.castShadow = true; car.add(body);
+            const windows = new THREE.Mesh(new THREE.BoxGeometry(1.45, .42, 1.45), glassMat); windows.position.set(0, 1.08, -.15); windows.castShadow = true; car.add(windows);
+            [-.72, .72].forEach(xPos => [-1.05, 1.05].forEach(zPos => { const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .16, 12), carWheelsMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(xPos, .35, zPos); car.add(wheel); }));
+            traffic.add(car);
+        }
+        addCar(-3.8, -60, 0, 1); addCar(3.8, 80, 1, -1); addCar(-3.8, 240, 2, 1, .85); addCar(3.8, -260, 3, -1, .9); addCar(-3.8, 470, 4, 1, .8);
+        scene.add(traffic);
+
+        const pedestrians = new THREE.Group();
+        const skinMat = new THREE.MeshPhongMaterial({ color: 0xd79a72 });
+        const shirtMats = [new THREE.MeshPhongMaterial({ color: 0xff7043 }), new THREE.MeshPhongMaterial({ color: 0x42a5f5 }), new THREE.MeshPhongMaterial({ color: 0xab47bc })];
+        function addPedestrian(x, z, variant = 0) {
+            const person = new THREE.Group(); person.position.set(x, 0, z); person.userData.phase = variant * .8;
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(.22, .3, 1.05, 8), shirtMats[variant % shirtMats.length]); body.position.y = .95; body.castShadow = true; person.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(.27, 10, 8), skinMat); head.position.y = 1.7; head.castShadow = true; person.add(head);
+            const legMat = new THREE.MeshPhongMaterial({ color: 0x26364a }); [-.12, .12].forEach(xPos => { const leg = new THREE.Mesh(new THREE.BoxGeometry(.12, .65, .12), legMat); leg.position.set(xPos, .28, 0); leg.castShadow = true; person.add(leg); });
+            pedestrians.add(person);
+        }
+        addPedestrian(18.5, -880, 0); addPedestrian(-18.5, -700, 1); addPedestrian(18.5, -340, 2); addPedestrian(-18.5, 20, 0); addPedestrian(18.5, 380, 1); addPedestrian(-18.5, 740, 2);
+        scene.add(pedestrians);
+
         let particleSystem; const particleCount = 1800;
         function initWeather() { const geometry = new THREE.BufferGeometry(); const positions = new Float32Array(particleCount * 3); for (let i=0; i<particleCount*3; i+=3) { positions[i] = (Math.random()-.5)*90; positions[i+1] = Math.random()*55; positions[i+2] = (Math.random()-.5)*90; } geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3)); particleSystem = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .25, color: 0xffffff, transparent: true, opacity: .8 })); particleSystem.visible = false; scene.add(particleSystem); }
         initWeather();
@@ -150,6 +177,7 @@
         function changeWeather(type) { document.querySelectorAll('.weather-btn').forEach(b => b.classList.toggle('active-btn', b.dataset.weather === type)); document.getElementById('weatherDisplay').textContent = weatherNames[type]; if (type === 'summer') { scene.background = new THREE.Color(0x87CEEB); scene.fog.color.setHex(0x87CEEB); ground.material.color.setHex(0x3d8c40); particleSystem.visible = false; } else if (type === 'winter') { scene.background = new THREE.Color(0x9eafc2); scene.fog.color.setHex(0x9eafc2); ground.material.color.setHex(0xdce4e8); particleSystem.visible = true; particleSystem.material.color.setHex(0xffffff); particleSystem.material.size = .32; } else { scene.background = new THREE.Color(0x3d4655); scene.fog.color.setHex(0x3d4655); ground.material.color.setHex(0x253c31); particleSystem.visible = true; particleSystem.material.color.setHex(0x9bc7ff); particleSystem.material.size = .16; } }
         document.querySelectorAll('.weather-btn').forEach(button => button.addEventListener('click', () => changeWeather(button.dataset.weather)));
 
+        function updateTraffic(dt) { traffic.position.set(truck.position.x, 0, truck.position.z); traffic.children.forEach(car => { car.position.z -= car.userData.direction * car.userData.speed * dt; if (car.position.z < -980) car.position.z = 980; if (car.position.z > 980) car.position.z = -980; }); pedestrians.position.set(truck.position.x, 0, truck.position.z); pedestrians.children.forEach(person => { person.userData.phase += dt * 2; person.position.y = Math.sin(person.userData.phase) * .035; }); }
         function updateParticles(dt) { if (!particleSystem.visible) return; particleSystem.position.set(truck.position.x, 0, truck.position.z); const positions = particleSystem.geometry.attributes.position.array; for (let i=1; i<positions.length; i+=3) { positions[i] -= dt * 28; if (positions[i] < -8) positions[i] = 55; } particleSystem.geometry.attributes.position.needsUpdate = true; }
         function updatePhysics(dt) {
             if (keys.w) speed += acceleration * dt; else if (keys.s) speed -= braking * dt; else if (speed > 0) speed = Math.max(0, speed - friction * dt); else if (speed < 0) speed = Math.min(0, speed + friction * dt);
@@ -161,7 +189,7 @@
             ground.position.set(truck.position.x, 0, truck.position.z); road.position.z = truck.position.z; laneMarkers.position.z = truck.position.z; roadside.position.z = truck.position.z; trees.position.set(truck.position.x, 0, truck.position.z); branchRoads.position.set(truck.position.x, 0, truck.position.z);
             const cameraOffset = new THREE.Vector3(0, 8.5, 20).applyAxisAngle(new THREE.Vector3(0,1,0), angle); const targetX = truck.position.x + cameraOffset.x; const targetZ = truck.position.z + cameraOffset.z; camera.position.x += (targetX - camera.position.x) * Math.min(1, dt * 5); camera.position.z += (targetZ - camera.position.z) * Math.min(1, dt * 5); camera.position.y += ((truck.position.y + 7.5) - camera.position.y) * Math.min(1, dt * 5); camera.lookAt(truck.position.x, 1.8, truck.position.z);
             document.getElementById('speedDisplay').textContent = Math.round(Math.abs(speed) * 14); document.getElementById('distanceDisplay').textContent = Math.round(distance);
-            updateParticles(dt);
+            updateTraffic(dt); updateParticles(dt);
         }
         function animate(now) { requestAnimationFrame(animate); const dt = Math.min((now - lastTime) / 1000, .05); lastTime = now; updatePhysics(dt); renderer.render(scene, camera); }
         addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight); });
