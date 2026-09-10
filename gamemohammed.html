@@ -2,306 +2,139 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محاكي الشاحنات 3D - نسخة الويب</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#07111c">
+    <title>محاكي الشاحنات العالمية 3D</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        }
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; font-family: "Segoe UI", Tahoma, sans-serif; background: #07111c; }
+        canvas { display: block; touch-action: none; }
         #ui-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            width: 280px;
+            position: fixed; z-index: 5; top: 16px; right: 16px; width: min(310px, calc(100vw - 32px));
+            padding: 16px; color: #f4f8fb; background: linear-gradient(145deg, rgba(5, 15, 26, .94), rgba(12, 29, 42, .88));
+            border: 1px solid rgba(130, 207, 255, .28); border-radius: 16px; box-shadow: 0 14px 35px rgba(0,0,0,.32); backdrop-filter: blur(8px);
         }
-        h2 { margin-top: 0; font-size: 1.2rem; color: #ffeb3b; }
-        .dashboard {
-            background: #222;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #4caf50;
+        h1 { margin: 0 0 12px; font-size: 1.18rem; color: #ffd54a; letter-spacing: .2px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .stat { padding: 9px; text-align: center; background: rgba(0,0,0,.3); border-radius: 10px; }
+        .stat-label { display: block; color: #9bb1c2; font-size: .72rem; margin-bottom: 3px; }
+        .stat-value { font-size: 1.18rem; font-weight: 700; color: #6ee7a5; }
+        .section-title { margin: 10px 0 7px; color: #d7e7f2; font-size: .86rem; font-weight: 700; }
+        .weather-grid { display: grid; gap: 7px; }
+        button { font: inherit; border: 1px solid rgba(255,255,255,.18); border-radius: 9px; cursor: pointer; color: #fff; background: rgba(255,255,255,.08); transition: transform .15s, background .15s, border-color .15s; }
+        button:hover { background: rgba(255,255,255,.16); }
+        button:active { transform: scale(.98); }
+        .weather-btn { width: 100%; padding: 9px 10px; text-align: right; }
+        .weather-btn.active-btn { background: #146ca8; border-color: #54c4ff; box-shadow: 0 0 0 2px rgba(84,196,255,.16); }
+        .instructions { margin-top: 13px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.13); color: #c7d6df; font-size: .78rem; line-height: 1.75; }
+        #reset-btn { width: 100%; margin-top: 11px; padding: 8px; color: #d8e7ef; }
+        #touch-controls { position: fixed; z-index: 6; left: 18px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 58px); gap: 8px; direction: ltr; }
+        .touch-btn { width: 58px; height: 58px; font-size: 1.35rem; background: rgba(5,15,26,.72); border-color: rgba(255,255,255,.28); user-select: none; -webkit-user-select: none; touch-action: none; }
+        #touch-up { grid-column: 2; grid-row: 1; } #touch-left { grid-column: 1; grid-row: 2; } #touch-down { grid-column: 2; grid-row: 2; } #touch-right { grid-column: 3; grid-row: 2; }
+        @media (min-width: 800px) { #touch-controls { opacity: .58; } }
+        @media (max-width: 600px) {
+            #ui-container { top: 9px; right: 9px; width: min(245px, calc(100vw - 18px)); padding: 11px; }
+            h1 { font-size: .94rem; margin-bottom: 8px; } .stats { gap: 5px; margin-bottom: 8px; }
+            .stat { padding: 6px; } .stat-value { font-size: 1rem; } .section-title, .instructions { font-size: .7rem; } .weather-btn { padding: 7px; font-size: .74rem; }
+            #touch-controls { left: 12px; bottom: 12px; transform: scale(.88); transform-origin: bottom left; }
         }
-        button {
-            display: block;
-            width: 100%;
-            margin: 8px 0;
-            padding: 10px;
-            background: #333;
-            color: white;
-            border: 1px solid #555;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        button:hover { background: #555; }
-        .active-btn { background: #007bff; border-color: #0056b3; }
-        .instructions { font-size: 0.9rem; color: #ccc; margin-top: 15px; line-height: 1.6; }
     </style>
 </head>
 <body>
-
-    <div id="ui-container">
-        <h2>🚚 محاكي الشاحنات العالمية</h2>
-        <div class="dashboard">
-            السرعة: <span id="speedDisplay">0</span> كم/س
+    <aside id="ui-container" aria-label="لوحة تحكم اللعبة">
+        <h1>🚚 محاكي الشاحنات العالمية</h1>
+        <div class="stats">
+            <div class="stat"><span class="stat-label">السرعة</span><span class="stat-value"><span id="speedDisplay">0</span> كم/س</span></div>
+            <div class="stat"><span class="stat-label">المسافة</span><span class="stat-value"><span id="distanceDisplay">0</span> م</span></div>
         </div>
-        
-        <p style="margin-bottom: 5px; font-weight: bold;">اختر الطقس والطريق:</p>
-        <button id="btn-summer" class="active-btn" onclick="changeWeather('summer')">☀️ صيف (طريق 66 - أمريكا)</button>
-        <button id="btn-winter" onclick="changeWeather('winter')">❄️ شتاء (طريق الألب - سويسرا)</button>
-        <button id="btn-rain" onclick="changeWeather('rain')">🌧️ ممطر (طريق الغابة السوداء - ألمانيا)</button>
-
-        <div class="instructions">
-            <strong>طريقة التحكم:</strong><br>
-            ⬆️ أو W : تسارع<br>
-            ⬇️ أو S : فرامل / رجوع للخلف<br>
-            ⬅️ ➡️ أو A/D : توجيه الشاحنة
+        <div class="section-title">الطقس والطريق: <span id="weatherDisplay">صيف</span></div>
+        <div class="weather-grid">
+            <button type="button" id="btn-summer" class="weather-btn active-btn" data-weather="summer">☀️ صيف — طريق 66</button>
+            <button type="button" id="btn-winter" class="weather-btn" data-weather="winter">❄️ شتاء — طريق الألب</button>
+            <button type="button" id="btn-rain" class="weather-btn" data-weather="rain">🌧️ مطر — الغابة السوداء</button>
         </div>
+        <div class="instructions"><strong>التحكم:</strong><br>⬆️ / W تسارع · ⬇️ / S فرامل ورجوع<br>⬅️ ➡️ / A D توجيه · R إعادة البداية</div>
+        <button type="button" id="reset-btn">↻ إعادة الشاحنة للبداية</button>
+    </aside>
+
+    <div id="touch-controls" aria-label="أزرار تحكم لمسية">
+        <button type="button" class="touch-btn" id="touch-up" aria-label="تسارع">▲</button>
+        <button type="button" class="touch-btn" id="touch-left" aria-label="توجيه يسار">◀</button>
+        <button type="button" class="touch-btn" id="touch-down" aria-label="فرامل">▼</button>
+        <button type="button" class="touch-btn" id="touch-right" aria-label="توجيه يمين">▶</button>
     </div>
 
-    <!-- استدعاء مكتبة Three.js ثلاثية الأبعاد -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // إعداد المشهد الأساسي
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015); // ضباب لإعطاء واقعية للمدى
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.012);
+        const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1400);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // الإضاءة
-        const ambientLight = new THREE.AmbientLight(0x555555);
-        scene.add(ambientLight);
-        
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-        dirLight.position.set(50, 100, 50);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+        const ambientLight = new THREE.AmbientLight(0x6b7682, 1.15); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.25); dirLight.position.set(40, 90, 35); dirLight.castShadow = true; dirLight.shadow.mapSize.set(1024, 1024); scene.add(dirLight);
 
-        // بناء الشاحنة (مبسطة هندسياً)
-        const truck = new THREE.Group();
-
-        // 1. كابينة القيادة
-        const cabinGeo = new THREE.BoxGeometry(2.5, 3, 3);
-        const cabinMat = new THREE.MeshPhongMaterial({ color: 0xcc0000 }); // لون أحمر
-        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
-        cabin.position.set(0, 2, 4);
-        cabin.castShadow = true;
-        truck.add(cabin);
-
-        // 2. المقطورة (التريلا)
-        const trailerGeo = new THREE.BoxGeometry(2.8, 3.5, 9);
-        const trailerMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
-        const trailer = new THREE.Mesh(trailerGeo, trailerMat);
-        trailer.position.set(0, 2.25, -2);
-        trailer.castShadow = true;
-        truck.add(trailer);
-
-        // 3. العجلات (أمثلة مبسطة)
-        const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 3, 16);
-        const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
-        const wheelPositions = [
-            [0, 0.6, 4], [0, 0.6, -2], [0, 0.6, -5]
-        ];
-        wheelPositions.forEach(pos => {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(...pos);
-            truck.add(wheel);
-        });
-
+        const truck = new THREE.Group(); truck.position.y = 0;
+        const redMat = new THREE.MeshPhongMaterial({ color: 0xc91520, shininess: 80 });
+        const darkMat = new THREE.MeshPhongMaterial({ color: 0x101820, shininess: 30 });
+        const glassMat = new THREE.MeshPhongMaterial({ color: 0x1c6687, transparent: true, opacity: .78, shininess: 100 });
+        const trailerMat = new THREE.MeshPhongMaterial({ color: 0xe9edf0, shininess: 40 });
+        const addMesh = (geometry, material, position, parent = truck) => { const mesh = new THREE.Mesh(geometry, material); mesh.position.set(...position); mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh; };
+        addMesh(new THREE.BoxGeometry(2.7, 2.7, 2.8), redMat, [0, 2, 4.2]);
+        addMesh(new THREE.BoxGeometry(2.2, .85, .08), glassMat, [0, 2.55, 2.77]);
+        addMesh(new THREE.BoxGeometry(2.2, .7, .08), glassMat, [0, 2.55, 5.63]);
+        addMesh(new THREE.BoxGeometry(2.85, 3.5, 8.5), trailerMat, [0, 2.25, -1.9]);
+        addMesh(new THREE.BoxGeometry(3.02, .18, 8.65), darkMat, [0, .55, -1.9]);
+        addMesh(new THREE.BoxGeometry(2.9, .22, .3), darkMat, [0, .7, 4.5]);
+        const wheelGeo = new THREE.CylinderGeometry(.62, .62, .42, 20); const wheels = [];
+        [[-1.48,.65,4.15],[1.48,.65,4.15],[-1.5,.65,-1.3],[1.5,.65,-1.3],[-1.5,.65,-4.2],[1.5,.65,-4.2]].forEach(pos => { const wheel = addMesh(wheelGeo, darkMat, pos); wheel.rotation.z = Math.PI / 2; wheels.push(wheel); });
         scene.add(truck);
 
-        // الأرضية والطريق
-        const groundGeo = new THREE.PlaneGeometry(2000, 2000);
-        const groundMat = new THREE.MeshPhongMaterial({ color: 0x3d8c40 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(2200, 2200), new THREE.MeshPhongMaterial({ color: 0x3d8c40 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(14, 2200), new THREE.MeshPhongMaterial({ color: 0x20282d })); road.rotation.x = -Math.PI / 2; road.position.y = .01; scene.add(road);
+        const laneMarkers = new THREE.Group(); const markerMat = new THREE.MeshBasicMaterial({ color: 0xf5e5a4 });
+        for (let z = -1000; z < 1000; z += 40) { const marker = new THREE.Mesh(new THREE.BoxGeometry(.18, .025, 13), markerMat); marker.position.set(0, .035, z); laneMarkers.add(marker); } scene.add(laneMarkers);
+        const roadside = new THREE.Group(); const postMat = new THREE.MeshPhongMaterial({ color: 0xf4f4e8 });
+        for (let z = -1000; z < 1000; z += 55) { [-10, 10].forEach(x => { const post = new THREE.Mesh(new THREE.BoxGeometry(.18, 1.1, .18), postMat); post.position.set(x, .55, z); post.castShadow = true; roadside.add(post); }); } scene.add(roadside);
 
-        // رسم الطريق الإسفلتي
-        const roadGeo = new THREE.PlaneGeometry(12, 2000);
-        const roadMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
-        const road = new THREE.Mesh(roadGeo, roadMat);
-        road.rotation.x = -Math.PI / 2;
-        road.position.y = 0.01; // فوق الأرضية بقليل
-        scene.add(road);
-
-        // نظام الطقس (الجسيمات)
-        let particleSystem;
-        function initWeather() {
-            const particles = new THREE.BufferGeometry();
-            const particleCount = 2000;
-            const posArray = new Float32Array(particleCount * 3);
-            
-            for(let i = 0; i < particleCount * 3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 100;
-            }
-            
-            particles.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const pMaterial = new THREE.PointsMaterial({
-                size: 0.3,
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.8
-            });
-            
-            particleSystem = new THREE.Points(particles, pMaterial);
-            scene.add(particleSystem);
-            particleSystem.visible = false;
-        }
+        let particleSystem; const particleCount = 1800;
+        function initWeather() { const geometry = new THREE.BufferGeometry(); const positions = new Float32Array(particleCount * 3); for (let i=0; i<particleCount*3; i+=3) { positions[i] = (Math.random()-.5)*90; positions[i+1] = Math.random()*55; positions[i+2] = (Math.random()-.5)*90; } geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3)); particleSystem = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .25, color: 0xffffff, transparent: true, opacity: .8 })); particleSystem.visible = false; scene.add(particleSystem); }
         initWeather();
 
-        // وظيفة تغيير الطقس وفصول السنة
-        window.changeWeather = function(type) {
-            // إعادة ضبط ألوان الأزرار
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active-btn'));
-            document.getElementById('btn-' + type).classList.add('active-btn');
+        const keys = { w:false, a:false, s:false, d:false };
+        const keyMap = { w:'w', W:'w', ArrowUp:'w', s:'s', S:'s', ArrowDown:'s', a:'a', A:'a', ArrowLeft:'a', d:'d', D:'d', ArrowRight:'d' };
+        function setKey(key, pressed) { if (keyMap[key]) { keys[keyMap[key]] = pressed; } }
+        addEventListener('keydown', e => { setKey(e.key, true); if (e.key.toLowerCase() === 'r') resetTruck(); });
+        addEventListener('keyup', e => setKey(e.key, false));
+        [['touch-up','w'],['touch-down','s'],['touch-left','a'],['touch-right','d']].forEach(([id,key]) => { const button = document.getElementById(id); const press = e => { e.preventDefault(); keys[key] = true; button.setPointerCapture?.(e.pointerId); }; const release = e => { e.preventDefault(); keys[key] = false; }; button.addEventListener('pointerdown', press); button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('pointerleave', release); });
 
-            if(type === 'summer') {
-                scene.background = new THREE.Color(0x87CEEB); // سماء زرقاء
-                scene.fog.color.setHex(0x87CEEB);
-                ground.material.color.setHex(0x3d8c40); // عشب أخضر
-                ambientLight.color.setHex(0x555555);
-                particleSystem.visible = false;
-            } 
-            else if(type === 'winter') {
-                scene.background = new THREE.Color(0x99aacc); // سماء رمادية
-                scene.fog.color.setHex(0x99aacc);
-                ground.material.color.setHex(0xeeeeee); // أرض بيضاء (ثلج)
-                ambientLight.color.setHex(0x777777);
-                particleSystem.visible = true;
-                particleSystem.material.color.setHex(0xffffff); // ثلج أبيض
-                particleSystem.material.size = 0.3;
-            } 
-            else if(type === 'rain') {
-                scene.background = new THREE.Color(0x444455); // سماء داكنة
-                scene.fog.color.setHex(0x444455);
-                ground.material.color.setHex(0x2a3b2a); // عشب داكن ومبلل
-                ambientLight.color.setHex(0x333333);
-                particleSystem.visible = true;
-                particleSystem.material.color.setHex(0xaaaaff); // قطرات زرقاء فاتحة
-                particleSystem.material.size = 0.15; // قطرات رفيعة
-            }
-        };
+        let speed = 0, angle = 0, distance = 0, lastTime = performance.now();
+        const maxSpeed = 7.2, reverseSpeed = 2.4, acceleration = 10, braking = 18, friction = 5.5;
+        function resetTruck() { truck.position.set(0,0,0); truck.rotation.y = 0; speed = 0; angle = 0; distance = 0; }
+        document.getElementById('reset-btn').addEventListener('click', resetTruck);
+        const weatherNames = { summer:'صيف', winter:'شتاء', rain:'ممطر' };
+        function changeWeather(type) { document.querySelectorAll('.weather-btn').forEach(b => b.classList.toggle('active-btn', b.dataset.weather === type)); document.getElementById('weatherDisplay').textContent = weatherNames[type]; if (type === 'summer') { scene.background = new THREE.Color(0x87CEEB); scene.fog.color.setHex(0x87CEEB); ground.material.color.setHex(0x3d8c40); particleSystem.visible = false; } else if (type === 'winter') { scene.background = new THREE.Color(0x9eafc2); scene.fog.color.setHex(0x9eafc2); ground.material.color.setHex(0xdce4e8); particleSystem.visible = true; particleSystem.material.color.setHex(0xffffff); particleSystem.material.size = .32; } else { scene.background = new THREE.Color(0x3d4655); scene.fog.color.setHex(0x3d4655); ground.material.color.setHex(0x253c31); particleSystem.visible = true; particleSystem.material.color.setHex(0x9bc7ff); particleSystem.material.size = .16; } }
+        document.querySelectorAll('.weather-btn').forEach(button => button.addEventListener('click', () => changeWeather(button.dataset.weather)));
 
-        // نظام التحكم والفيزياء
-        const keys = { w: false, a: false, s: false, d: false };
-        
-        document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
-            if(key === 'w' || e.key === 'ArrowUp') keys.w = true;
-            if(key === 's' || e.key === 'ArrowDown') keys.s = true;
-            if(key === 'a' || e.key === 'ArrowLeft') keys.a = true;
-            if(key === 'd' || e.key === 'ArrowRight') keys.d = true;
-        });
-
-        document.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
-            if(key === 'w' || e.key === 'ArrowUp') keys.w = false;
-            if(key === 's' || e.key === 'ArrowDown') keys.s = false;
-            if(key === 'a' || e.key === 'ArrowLeft') keys.a = false;
-            if(key === 'd' || e.key === 'ArrowRight') keys.d = false;
-        });
-
-        let speed = 0;
-        let angle = 0;
-        const maxSpeed = 1.2;
-        const acceleration = 0.005;
-        const braking = 0.01;
-        const friction = 0.002;
-
-        function updatePhysics() {
-            // التسارع والفرملة
-            if (keys.w) speed += acceleration;
-            else if (keys.s) speed -= braking;
-            else {
-                // الاحتكاك (توقف تدريجي)
-                if (speed > 0) speed -= friction;
-                if (speed < 0) speed += friction;
-            }
-
-            // حدود السرعة
-            speed = Math.max(-0.4, Math.min(speed, maxSpeed));
-
-            // التوجيه (يعمل فقط إذا كانت الشاحنة تتحرك)
-            if (Math.abs(speed) > 0.01) {
-                const turnSpeed = 0.02 * (speed / maxSpeed); // الالتفاف أسرع كلما زادت السرعة
-                if (keys.a) angle += turnSpeed;
-                if (keys.d) angle -= turnSpeed;
-            }
-
-            // تطبيق الحركة على الشاحنة
-            truck.rotation.y = angle;
-            truck.position.x -= Math.sin(angle) * speed;
-            truck.position.z -= Math.cos(angle) * speed;
-
-            // تحديث الكاميرا لتتبع الشاحنة من الخلف
-            const cameraOffset = new THREE.Vector3(0, 8, -25);
-            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle);
-            
-            // جعل الكاميرا تتبع الشاحنة بسلاسة
-            camera.position.x += ((truck.position.x - cameraOffset.x) - camera.position.x) * 0.1;
-            camera.position.z += ((truck.position.z - cameraOffset.z) - camera.position.z) * 0.1;
-            camera.position.y = truck.position.y + 10;
-            
-            camera.lookAt(truck.position.x, truck.position.y + 2, truck.position.z);
-
-            // تحريك الأرضية والطريق لتغطية المسافات اللانهائية
-            ground.position.x = truck.position.x;
-            ground.position.z = truck.position.z;
-            road.position.z = truck.position.z; // الطريق يتحرك مع اللاعب للأمام
-            
-            // تحديث عداد السرعة في واجهة المستخدم
-            const displaySpeed = Math.abs(Math.round(speed * 100)); // تحويل السرعة لرقم مفهوم
-            document.getElementById('speedDisplay').innerText = displaySpeed;
-
-            // تحريك تأثيرات الطقس (المطر / الثلج)
-            if(particleSystem.visible) {
-                particleSystem.position.x = truck.position.x;
-                particleSystem.position.z = truck.position.z;
-                
-                const positions = particleSystem.geometry.attributes.position.array;
-                for(let i = 1; i < positions.length; i += 3) {
-                    positions[i] -= 0.5; // سرعة سقوط المطر/الثلج
-                    if(positions[i] < -10) positions[i] = 50; // إعادة تدوير الجسيمات للأعلى
-                }
-                particleSystem.geometry.attributes.position.needsUpdate = true;
-            }
+        function updateParticles(dt) { if (!particleSystem.visible) return; particleSystem.position.set(truck.position.x, 0, truck.position.z); const positions = particleSystem.geometry.attributes.position.array; for (let i=1; i<positions.length; i+=3) { positions[i] -= dt * 28; if (positions[i] < -8) positions[i] = 55; } particleSystem.geometry.attributes.position.needsUpdate = true; }
+        function updatePhysics(dt) {
+            if (keys.w) speed += acceleration * dt; else if (keys.s) speed -= braking * dt; else if (speed > 0) speed = Math.max(0, speed - friction * dt); else if (speed < 0) speed = Math.min(0, speed + friction * dt);
+            speed = THREE.MathUtils.clamp(speed, -reverseSpeed, maxSpeed);
+            if (Math.abs(speed) > .05) angle += (keys.a ? 1 : 0) * .95 * dt * (speed / maxSpeed) - (keys.d ? 1 : 0) * .95 * dt * (speed / maxSpeed);
+            truck.rotation.y = angle; truck.position.x -= Math.sin(angle) * speed * dt; truck.position.z -= Math.cos(angle) * speed * dt;
+            truck.position.x = THREE.MathUtils.clamp(truck.position.x, -5.1, 5.1); distance = Math.max(distance, Math.abs(truck.position.z));
+            wheels.forEach(wheel => { wheel.rotation.x -= speed * dt * 2.5; });
+            ground.position.set(truck.position.x, 0, truck.position.z); road.position.z = truck.position.z; laneMarkers.position.z = truck.position.z; roadside.position.z = truck.position.z;
+            const cameraOffset = new THREE.Vector3(0, 8.5, 20).applyAxisAngle(new THREE.Vector3(0,1,0), angle); const targetX = truck.position.x + cameraOffset.x; const targetZ = truck.position.z + cameraOffset.z; camera.position.x += (targetX - camera.position.x) * Math.min(1, dt * 5); camera.position.z += (targetZ - camera.position.z) * Math.min(1, dt * 5); camera.position.y += ((truck.position.y + 7.5) - camera.position.y) * Math.min(1, dt * 5); camera.lookAt(truck.position.x, 1.8, truck.position.z);
+            document.getElementById('speedDisplay').textContent = Math.round(Math.abs(speed) * 14); document.getElementById('distanceDisplay').textContent = Math.round(distance);
+            updateParticles(dt);
         }
-
-        // حلقة اللعبة المستمرة (Game Loop)
-        function animate() {
-            requestAnimationFrame(animate);
-            updatePhysics();
-            renderer.render(scene, camera);
-        }
-
-        // تعديل حجم الشاشة عند التكبير/التصغير
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // تشغيل الحالة الافتراضية وبدء اللعبة
-        changeWeather('summer');
-        animate();
+        function animate(now) { requestAnimationFrame(animate); const dt = Math.min((now - lastTime) / 1000, .05); lastTime = now; updatePhysics(dt); renderer.render(scene, camera); }
+        addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(innerWidth, innerHeight); });
+        changeWeather('summer'); resetTruck(); camera.position.set(0, 7.5, 20); camera.lookAt(0, 1.8, 0); requestAnimationFrame(animate);
     </script>
 </body>
 </html>
