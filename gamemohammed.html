@@ -29,15 +29,21 @@
         .weather-btn.active-btn { background: #146ca8; border-color: #54c4ff; box-shadow: 0 0 0 2px rgba(84,196,255,.16); }
         .instructions { margin-top: 13px; padding-top: 11px; border-top: 1px solid rgba(255,255,255,.13); color: #c7d6df; font-size: .78rem; line-height: 1.75; }
         #reset-btn { width: 100%; margin-top: 11px; padding: 8px; color: #d8e7ef; }
-        #touch-controls { position: fixed; z-index: 6; left: 18px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 58px); gap: 8px; direction: ltr; }
-        .touch-btn { width: 58px; height: 58px; font-size: 1.35rem; background: rgba(5,15,26,.72); border-color: rgba(255,255,255,.28); user-select: none; -webkit-user-select: none; touch-action: none; }
+        #touch-controls { position: fixed; z-index: 6; left: 18px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 72px); grid-template-rows: repeat(2, 64px); gap: 8px; direction: ltr; }
+        .touch-btn { width: 72px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .72rem; font-weight: 700; line-height: 1; background: rgba(5,15,26,.78); border-color: rgba(255,255,255,.3); user-select: none; -webkit-user-select: none; touch-action: none; }
+        .touch-btn .control-icon { font-size: 1.35rem; line-height: 1; }
+        .touch-btn .control-label { color: #d7e7f2; white-space: nowrap; }
+        .touch-btn[data-action="accelerate"] { border-color: rgba(80, 220, 150, .55); }
+        .touch-btn[data-action="brake"] { border-color: rgba(255, 180, 80, .6); }
+        .touch-btn[data-action="steer"] { border-color: rgba(84, 196, 255, .5); }
+        .touch-btn.is-pressed, .touch-btn:active { transform: scale(.94); background: #146ca8; border-color: #7ed8ff; box-shadow: 0 0 0 3px rgba(84,196,255,.2), 0 0 18px rgba(84,196,255,.28); }
         #touch-up { grid-column: 2; grid-row: 1; } #touch-left { grid-column: 1; grid-row: 2; } #touch-down { grid-column: 2; grid-row: 2; } #touch-right { grid-column: 3; grid-row: 2; }
         @media (min-width: 800px) { #touch-controls { opacity: .58; } }
         @media (max-width: 600px) {
             #ui-container { top: 9px; right: 9px; width: min(245px, calc(100vw - 18px)); padding: 11px; }
             h1 { font-size: .94rem; margin-bottom: 8px; } .stats { gap: 5px; margin-bottom: 8px; }
             .stat { padding: 6px; } .stat-value { font-size: 1rem; } .section-title, .instructions { font-size: .7rem; } .weather-btn { padding: 7px; font-size: .74rem; }
-            #touch-controls { left: 12px; bottom: 12px; transform: scale(.88); transform-origin: bottom left; }
+            #touch-controls { left: 12px; bottom: 12px; transform: scale(.82); transform-origin: bottom left; }
         }
     </style>
 </head>
@@ -54,15 +60,15 @@
             <button type="button" id="btn-winter" class="weather-btn" data-weather="winter">❄️ شتاء — طريق الألب</button>
             <button type="button" id="btn-rain" class="weather-btn" data-weather="rain">🌧️ مطر — الغابة السوداء</button>
         </div>
-        <div class="instructions"><strong>التحكم:</strong><br>⬆️ / W تسارع · ⬇️ / S فرامل ورجوع<br>⬅️ ➡️ / A D توجيه · R إعادة البداية</div>
+        <div class="instructions"><strong>التحكم:</strong><br>🚀 / W تسارع · 🛑 / S فرامل ورجوع<br>↩️ ↪️ / A D توجيه · R إعادة البداية</div>
         <button type="button" id="reset-btn">↻ إعادة الشاحنة للبداية</button>
     </aside>
 
     <div id="touch-controls" aria-label="أزرار تحكم لمسية">
-        <button type="button" class="touch-btn" id="touch-up" aria-label="تسارع">▲</button>
-        <button type="button" class="touch-btn" id="touch-left" aria-label="توجيه يسار">◀</button>
-        <button type="button" class="touch-btn" id="touch-down" aria-label="فرامل">▼</button>
-        <button type="button" class="touch-btn" id="touch-right" aria-label="توجيه يمين">▶</button>
+        <button type="button" class="touch-btn" id="touch-up" data-action="accelerate" aria-label="تسارع"><span class="control-icon">🚀</span><span class="control-label">تسارع</span></button>
+        <button type="button" class="touch-btn" id="touch-left" data-action="steer" aria-label="توجيه يسار"><span class="control-icon">↩️</span><span class="control-label">يسار</span></button>
+        <button type="button" class="touch-btn" id="touch-down" data-action="brake" aria-label="فرامل ورجوع"><span class="control-icon">🛑</span><span class="control-label">فرامل</span></button>
+        <button type="button" class="touch-btn" id="touch-right" data-action="steer" aria-label="توجيه يمين"><span class="control-icon">↪️</span><span class="control-label">يمين</span></button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -109,7 +115,7 @@
         function setKey(key, pressed) { if (keyMap[key]) { keys[keyMap[key]] = pressed; } }
         addEventListener('keydown', e => { setKey(e.key, true); if (e.key.toLowerCase() === 'r') resetTruck(); });
         addEventListener('keyup', e => setKey(e.key, false));
-        [['touch-up','w'],['touch-down','s'],['touch-left','a'],['touch-right','d']].forEach(([id,key]) => { const button = document.getElementById(id); const press = e => { e.preventDefault(); keys[key] = true; button.setPointerCapture?.(e.pointerId); }; const release = e => { e.preventDefault(); keys[key] = false; }; button.addEventListener('pointerdown', press); button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('pointerleave', release); });
+        [['touch-up','w'],['touch-down','s'],['touch-left','a'],['touch-right','d']].forEach(([id,key]) => { const button = document.getElementById(id); const press = e => { e.preventDefault(); keys[key] = true; button.classList.add('is-pressed'); button.setPointerCapture?.(e.pointerId); }; const release = e => { e.preventDefault(); keys[key] = false; button.classList.remove('is-pressed'); }; button.addEventListener('pointerdown', press); button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('pointerleave', release); });
 
         let speed = 0, angle = 0, distance = 0, lastTime = performance.now();
         const maxSpeed = 7.2, reverseSpeed = 2.4, acceleration = 10, braking = 18, friction = 5.5;
